@@ -1,5 +1,12 @@
-import pygame, math, random
+import pygame, math, random, os
 from pylsl import StreamInfo, StreamOutlet
+
+#set up pinned window on second monitor
+x = -1920
+y = 0
+os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
+os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
+
 
 pygame.init()
 
@@ -21,6 +28,8 @@ speed_func = lambda t, freq: math.sin(t * freq * math.pi * sec_in_msec / 2) ** 2
 info = StreamInfo(name = 'annotations', type = 'Events', channel_count = 1, nominal_srate = 0, channel_format = 'string', source_id = 'my_marker_stream')
 
 outlet = StreamOutlet(info)
+
+print('lsl outlet is created')
 
 #print(pygame.font.get_fonts())
 
@@ -46,8 +55,8 @@ for id, char in enumerate(alphabet):
         'letter': font.render(char, True, letter_foreground),
         'shadow': font.render(char, True, shadow_foreground),
         'alpha': random.random(),
-        'amplitude': random.random() * 15 + 5,
-        'frequency': random.random() * 4.8 + 0.2,
+        'amplitude': 20, #random.random() * 15 + 5,
+        'frequency': 1, #random.random() * 4.8 + 0.2,
         'previous_speed': 0,
         'decrease': False
     }
@@ -69,11 +78,11 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
                 
-            if event.key == pygame.K_S:
+            if event.key == pygame.K_s:
                 start_experiment = True
                 outlet.push_sample(['start_experiment'])
             
-            if event.key == pygame.K_E:
+            if event.key == pygame.K_e:
                 start_experiment = False
                 outlet.push_sample(['end_experiment'])
 
@@ -88,11 +97,13 @@ while running:
         
         if speed < params['previous_speed'] and not params['decrease']:
             params['decrease'] = True
+            #if char == 'А' and start_experiment:
             outlet.push_sample([f'letter_{char}_max'])
         elif speed > params['previous_speed'] and params['decrease']:
             params['decrease'] = False
-            outlet.push_sample([f'letter_{char}_min'])
             params['alpha'] = random.random()
+            #if char == 'А' and start_experiment:
+            outlet.push_sample([f'letter_{char}_min'])
             
         params['previous_speed'] = speed
         
