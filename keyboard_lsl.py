@@ -37,15 +37,15 @@ pygame.display.set_caption('Experiment')
 clock = pygame.time.Clock()
 t0 = pygame.time.get_ticks()
 
-background = (55, 55, 55)
+background = (255, 255, 255)
 letter_foreground = (255, 255, 255)
-shadow_foreground = (155, 155, 155)
+shadow_foreground = (0, 0, 0)
 
 FPS = 60
 
-font = pygame.font.SysFont(name = 'Arial', size = 80, bold = True)
+font = pygame.font.SysFont(name = 'Arial', size = 50, bold = True)
 
-alphabet = '1234567890<ЁЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ'
+alphabet = '1234567890_ЙЦУКЕНГГЩЗХФЫВАПРОЛДЖЭЁЯЧСМИТЬБЮЪ'
 
 cells = {}
 
@@ -54,8 +54,8 @@ for id, char in enumerate(alphabet):
         'id': id,
         'letter': font.render(char, True, letter_foreground),
         'shadow': font.render(char, True, shadow_foreground),
-        'alpha': random.random(),
-        'amplitude': 20, #random.random() * 15 + 5,
+        'alpha': random.randint(0, 1) / 2, #random.random(),
+        'amplitude': 40, #random.random() * 15 + 5,
         'frequency': 1, #random.random() * 4.8 + 0.2,
         'previous_speed': 0,
         'decrease': False
@@ -101,7 +101,7 @@ while running:
             outlet.push_sample([f'letter_{char}_max'])
         elif speed > params['previous_speed'] and params['decrease']:
             params['decrease'] = False
-            params['alpha'] = random.random()
+            params['alpha'] = random.randint(0, 1) / 2 #random.random()
             #if char == 'А' and start_experiment:
             outlet.push_sample([f'letter_{char}_min'])
             
@@ -114,9 +114,9 @@ while running:
         dx = params['amplitude'] * dirx * speed
         dy = params['amplitude'] * diry * speed
         
-        pygame.draw.rect(screen, (255, 0, 0), (i * w, j * h, w, h), 1)
+        #pygame.draw.rect(screen, (255, 0, 0), (i * w, j * h, w, h), 1)
         screen.blit(params['shadow'], (i * w + w / 2 - params['shadow'].get_width() / 2 + dx, j * h + h / 2 - params['shadow'].get_height() / 2 - dy))
-        screen.blit(params['letter'], (i * w + w / 2 - params['letter'].get_width() / 2, j * h + h / 2 - params['letter'].get_height() / 2))
+        #screen.blit(params['letter'], (i * w + w / 2 - params['letter'].get_width() / 2, j * h + h / 2 - params['letter'].get_height() / 2))
     
     
     #R = 20
