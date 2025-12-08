@@ -49,6 +49,8 @@ outlet = StreamOutlet(info)
 
 print('lsl outlet is created')
 
+lsl_output = True
+
 #print(pygame.font.get_fonts())
 
 pygame.display.set_caption('Experiment')
@@ -71,8 +73,10 @@ for id, char in enumerate(alphabet):
         'letter': font.render(char, True, letter_foreground),
         #'alpha': random.randint(0, 1) / 2, #random.random(),
         'amplitude': (w / 2) * 0.9, #random.random() * 15 + 5,
-        'frequency': 2, #random.random() * 4.8 + 0.2,
-        #'moving': True,
+        'frequency': 1, #random.random() * 4.8 + 0.2,
+        'moving': False,
+        'stop': False,
+        'previous_speed': 0,
     }
     
 #print(cells)
@@ -85,7 +89,7 @@ moving_id = random.choice(range(len(alphabet)))
 
 #print(moving_id)
 
-t0 = pygame.time.get_ticks()
+#t0 = pygame.time.get_ticks()
 start_t = 0
 
 while running:
@@ -99,15 +103,22 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
                 
-            #if event.key == pygame.K_s:
-            #    start_experiment = True
-            #    outlet.push_sample(['start_experiment'])
-            #
-            #if event.key == pygame.K_e:
-            #    start_experiment = False
-            #    outlet.push_sample(['end_experiment'])
+            if event.key == pygame.K_s:
+                start_experiment = True
+                t0 = pygame.time.get_ticks()
+                if lsl_output:
+                    outlet.push_sample(['start_experiment'])
+                else:
+                    print('start')
+            
+            if event.key == pygame.K_e:
+                start_experiment = False
+                if lsl_output:
+                    outlet.push_sample(['end_experiment'])
+                else:
+                    print('end')
 
-    t = pygame.time.get_ticks() - t0
+    #t = pygame.time.get_ticks() - t0
     
     screen.fill(background)
     
@@ -115,14 +126,33 @@ while running:
         j, i = params['id'] // n_cols, params['id'] % n_cols
         
         
-        if params['id'] == moving_id:
+        if params['id'] == moving_id and start_experiment:
+            
+            t = pygame.time.get_ticks() - t0
             
             try:
                 speed = speed_func(t - start_t, params['frequency'])
+                params['previous_speed'] = speed
+                if speed != 0 and not params['moving']:
+                    params['moving'] = True
+                    if lsl_output:
+                        outlet.push_sample([f'letter_{char}_start'])
+                    else:
+                        print(f'letter_{char}_start')
+                if speed == 0 and params['previous_speed'] == 0 and not params['stop'] and params['moving']:
+                    params['stop'] = True
+                    if lsl_output:
+                        outlet.push_sample([f'letter_{char}_end'])
+                    else:
+                        print(f'letter_{char}_end')
             except ValueError:
                 start_t = t
                 speed = speed_func(t - start_t, params['frequency'])
+                params['previous_speed'] = 0
                 moving_id = random.choice(range(len(alphabet)))
+                #outlet.push_sample([f'letter_{char}'])
+                params['moving'] = False
+                params['stop'] = False
             
             dx = params['amplitude'] * speed
             dy = 0
