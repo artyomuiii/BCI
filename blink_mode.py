@@ -131,6 +131,7 @@ def main():
 
     # основной цикл
     is_run = True
+    is_off = False
     is_print = False
     i, j = -2, -2
     while is_run:
@@ -150,6 +151,7 @@ def main():
         
         if not is_print:
             is_print = True
+            is_off = False
             i, j = get_rand_pos_without_neighbors(rows, cols, n, i, j)
             char = chars_mat[i, j]
             params = cells[char]
@@ -157,13 +159,19 @@ def main():
             duty = params["duty"] + random.uniform(-params["eps_duty"], params["eps_duty"])
             pause = params["pause"] + random.uniform(-params["eps_pause"], params["eps_pause"])
             pause_mode = params["pause_mode"]
+            print("stim_on_" + char)
             outlet.push_sample(["stim_on_" + char])
 
         if t < duty/freq: # длительность показа
             screen.blit(params["surf"], params["pos"])
+        elif (pause_mode == "duty" and (duty/freq <= t < 1/freq)) or \
+             (pause_mode == "pause" and (t < duty/freq + pause)):
+            if not is_off:
+                print("stim_off_" + char)
+                outlet.push_sample(["stim_off_" + char])
+                is_off = True
         elif (pause_mode == "duty" and not (duty/freq <= t < 1/freq)) or \
              (pause_mode == "pause" and not (t < duty/freq + pause)):
-                outlet.push_sample(["stim_off_" + char])
                 t0 = pg.time.get_ticks() / 1000  # сброс времени
                 is_print = False
 
