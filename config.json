@@ -1,0 +1,18 @@
+{
+  "text": "АБВГДЕЁЖЗИ", 
+  "defaults": { "mode": "h", "freq": 1.0, "amp": 120, "phase": 0.0, "phase_step": 0.0, "angle": 45, "size": 0 },
+  "items": [
+    { "index": 0, "mode": "v", "angle": 0, "freq": 0.5, "amp": 90 },
+    { "index": 1, "mode": "h", "angle": 0, "freq": 1.2, "amp": 90, "phase": 1.0 },
+    { "index": 2, "mode": "d", "angle": 45, "freq": 0.9, "amp": 90 },
+    { "index": 3, "mode": "d", "angle": -45, "freq": 1.8, "amp": 90, "phase": 1.0 },
+    { "index": 4, "mode": "v", "angle": 0, "freq": 0.5, "amp": 90 },
+    { "index": 5, "mode": "h", "angle": 0, "freq": 1.2, "amp": 90, "phase": 1.0 },
+    { "index": 6, "mode": "d", "angle": 45, "freq": 0.9, "amp": 90 },
+    { "index": 7, "mode": "d", "angle": -45, "freq": 1.8, "amp": 90, "phase": 1.0 },
+    { "index": 8, "mode": "v", "angle": 0, "freq": 0.5, "amp": 90 },
+    { "index": 9, "mode": "h", "angle": 0, "freq": 1.2, "amp": 90, "phase": 1.0 }
+  ],
+  "view": { "fullscreen": true, "fps": 60, "bg": [0,0,0], "fg": [55,55,55] }
+}
+
