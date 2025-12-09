@@ -159,7 +159,6 @@ def main():
             duty = params["duty"] + random.uniform(-params["eps_duty"], params["eps_duty"])
             pause = params["pause"] + random.uniform(-params["eps_pause"], params["eps_pause"])
             pause_mode = params["pause_mode"]
-            print("stim_on_" + char)
             outlet.push_sample(["stim_on_" + char])
 
         if t < duty/freq: # длительность показа
@@ -167,7 +166,6 @@ def main():
         elif (pause_mode == "duty" and (duty/freq <= t < 1/freq)) or \
              (pause_mode == "pause" and (t < duty/freq + pause)):
             if not is_off:
-                print("stim_off_" + char)
                 outlet.push_sample(["stim_off_" + char])
                 is_off = True
         elif (pause_mode == "duty" and not (duty/freq <= t < 1/freq)) or \
