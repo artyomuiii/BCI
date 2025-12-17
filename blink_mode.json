@@ -1,8 +1,36 @@
 {
-  "text": "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ_", 
-  "defaults": { "pause_mode": "duty", "freq": 0.5, "eps_freq": 0.0, "duty": 0.5, "eps_duty": 0.0, "pause": 0.5, "eps_pause": 0.0 },
+  "language": "en",
+  "keyboard_mode": "default",
+  "numbers_flag": false,
+  "en_text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+  "rus_text": "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ_",
+  "defaults": {
+    "buf_size": 3,
+    "pause_mode": "duty",
+    "freq": 2.5,
+    "duty": 0.5,
+    "pause": 1.0,
+    "eps_freq": 0.0,
+    "eps_duty": 0.0,
+    "eps_pause": 0.0
+  },
   "items": [
-    { "index": 0, "freq": 0.5, "phase": 0.0 }
+    {
+      "index": 0
+    }
   ],
-  "view": { "fullscreen": true, "fps": 60, "bg": [0,0,0], "fg": [255,255,255] }
+  "view": {
+    "theme": "light",
+    "mute_mode": "color",
+    "fullscreen": true,
+    "fps": 60,
+    "bg_dark": [0, 0, 0],
+    "fg_dark": [255, 255, 255],
+    "mg_dark": [30, 30, 30],
+    "bg_light": [255, 255, 255],
+    "fg_light": [0, 0, 0],
+    "mg_light": [225, 225, 225],
+    "mute_coeff": 0.5,
+    "scale": 1.5
+  }
 }
