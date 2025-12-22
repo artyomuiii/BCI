@@ -1,7 +1,7 @@
 import numpy as np
 import pygame as pg
 from collections import deque
-import random, sys, os, math, json
+import random, sys, os, math, json, time
 from pylsl import StreamInfo, StreamOutlet
 
 
@@ -32,8 +32,10 @@ def load_config(path):
         lang = cfg.get("language")
         if lang == "en":
             text = cfg.get("en_text")
-        elif lang == "rus":
+        elif lang == "ru":
             text = cfg.get("rus_text")
+        else:
+            raise ValueError("Error in `lang`!")
         
         # определяем, нужны ли цифры
         if cfg.get("numbers_flag"):
@@ -42,6 +44,8 @@ def load_config(path):
         pass
     elif keyboard_mode == "rus":
         pass
+    else:
+        raise ValueError("Error in `keyboard_mode`!")
 
     # строим список элементов
     elems = [{"char": char} for char in text]
@@ -56,6 +60,8 @@ def load_config(path):
         bg = view.get("bg_light")
         fg = view.get("fg_light")
         mg = view.get("mg_light")
+    else:
+        raise ValueError("Error in `theme`!")
 
     # применяем переопределения из items
     for item in items:
@@ -102,20 +108,27 @@ def get_rows_cols(n):
 
 # получить случ. координаты несоседнего с предыдущим символом символа,
 #   учитывая окно заданной ширины невторяющихся символов, кот. для каждого символа своё
-def get_pos(rows, cols, n, prev_i, prev_j, char_mat, buf_mat):
+def get_pos_single_activation(rows, cols, n, prev_i, prev_j, char_arr, buf_mat):
     i = random.randrange(rows)
     j = random.randrange(cols)
     while (i * cols + j >= n) or \
           (abs(i - prev_i) <= 1 and abs(j - prev_j) <= 1) or \
-          char_mat[i, j] in buf_mat[i][j]:
+          char_arr[i, j] in buf_mat[i][j]:
         i = random.randrange(rows)
         j = random.randrange(cols)
     
     for k in range(rows):
         for n in range(cols):
-            if char_mat[k, n] != ' ':
-                buf_mat[k][n].append(char_mat[i, j])
+            if char_arr[k, n] != ' ':
+                buf_mat[k][n].append(char_arr[i, j])
     
+    return i, j
+
+
+# получить случ. координаты символа
+def get_pos(rows, cols):
+    i = random.randrange(rows)
+    j = random.randrange(cols)    
     return i, j
 
 
@@ -130,7 +143,6 @@ def main():
     n = len(elems)
     rows, cols = get_rows_cols(n)
     cell_w, cell_h = w // cols, h // rows
-    print("cell size:", cell_w, cell_h)
 
     font = pg.font.SysFont(None, int(min(cell_w, cell_h) * 0.8), bold=True)
 
@@ -144,6 +156,8 @@ def main():
                            bg[k] * (1 - view["mute_coeff"])) for k in range(3))
         elif view["mute_mode"] == "color":
             mg = view["mg"]
+        else:
+            raise ValueError("Error in `mute_mode`!")
         surf_fg = font.render(elem["char"], True, fg).convert_alpha()
         surf_bg = font.render(elem["char"], True, bg).convert_alpha()
         surf_mg = font.render(elem["char"], True, mg).convert_alpha()
@@ -167,10 +181,18 @@ def main():
         surf_fg_scale = pg.transform.smoothscale(surf_fg, (surf_w_scale,
                                                            surf_h_scale)).convert_alpha()
         base_x_scale, base_y_scale = cell_x - surf_w_scale // 2, cell_y - surf_h_scale // 2
+
+        # создание прямоугольников, которыми будем закрашивать
+        rect_bg = pg.Surface(surf_fg.get_size())
+        rect_bg.fill(bg)
+        rect_bg_scale = pg.Surface(surf_fg_scale.get_size())
+        rect_bg_scale.fill(bg)
         
         cells[elem["char"]] = {
             "rect": rect,
             "corner_radius": corner_radius,
+            "rect_bg": rect_bg,
+            "rect_bg_scale": rect_bg_scale,
             "surf_fg": surf_fg,
             "surf_bg": surf_bg,
             "surf_mg": surf_mg,
@@ -197,22 +219,35 @@ def main():
 
     # матрица символов
     chars = list(view["text"] + ' ' * (rows * cols - len(view["text"])))
-    char_mat = np.array(chars).reshape((rows, cols))
+    char_arr = np.array(chars).reshape((rows, cols))
 
-    # буфер недавно показанных символов (для каждого символа свой)
+    # буфер недавно показанных символов, для каждого символа свой (список списков)
     buf_mat = [[None for _ in range(cols)] for _ in range(rows)]
     for i in range(rows):
         for j in range(cols):
-            if char_mat[i, j] != ' ':
-                buf_mat[i][j] = deque(maxlen=cells[char_mat[i, j]]["buf_size"])
+            if char_arr[i, j] != ' ':
+                buf_mat[i][j] = deque(maxlen=cells[char_arr[i, j]]["buf_size"])
     
+    t0_arr = np.zeros((rows, cols))
+    freq_arr = np.zeros((rows, cols))
+    duty_arr = np.zeros((rows, cols))
+    pause_arr = np.zeros((rows, cols))
+    pause_mode_mat = [[None for _ in range(cols)] for _ in range(rows)]
+
+    # матрицы флагов
+    is_off_arr = np.ones((rows, cols), dtype=bool)
+    is_period_arr = np.zeros((rows, cols), dtype=bool)
+
+    # начальная отрисовка
+    screen.fill(view["bg"])
+    for cell in cells.values(): # отрисовываем все символы приглушённо (видимы всегда)
+        screen.blit(cell["surf_mg"], cell["pos"])
+
     # основной цикл
-    is_run, is_off, is_print = True, True, False
-    i, j = -2, -2
+    is_run = True
     clock = pg.time.Clock()
-    t0 = pg.time.get_ticks() / 1000
     while is_run:
-        # обработка событий
+        # обработка событий - нажатия клавиш
         for event in pg.event.get():
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
@@ -223,53 +258,55 @@ def main():
 
                 if event.key == pg.K_e:
                     outlet.push_sample(['exp_end'])
+
+        for i in range(rows):
+            for j in range(cols):
+                if char_arr[i, j] != ' ':
+                    if not is_period_arr[i, j]:
+                        is_period_arr[i, j] = True
+                        is_off_arr[i, j] = False
+                        freq_arr[i, j] = cells[char_arr[i, j]]["freq"] + \
+                                         random.uniform(
+                                             -cells[char_arr[i, j]]["eps_freq"],
+                                             cells[char_arr[i, j]]["eps_freq"])
+                        duty_arr[i, j] = cells[char_arr[i, j]]["duty"] + \
+                                         random.uniform(
+                                             -cells[char_arr[i, j]]["eps_duty"],
+                                             cells[char_arr[i, j]]["eps_duty"])
+                        pause_arr[i, j] = cells[char_arr[i, j]]["pause"] + \
+                                          random.uniform(
+                                              -cells[char_arr[i, j]]["eps_pause"],
+                                               cells[char_arr[i, j]]["eps_pause"])
+                        pause_mode_mat[i][j] = cells[char_arr[i, j]]["pause_mode"]
+                        outlet.push_sample(["stim_on_" + char_arr[i, j]])
+                        t0_arr[i, j] = pg.time.get_ticks() / 1000  # сброс времени
+
+                    t = pg.time.get_ticks() / 1000 - t0_arr[i, j]
+
+                    if t < duty_arr[i, j]/freq_arr[i,j]: # длительность показа
+                        screen.blit(cells[char_arr[i, j]]["rect_bg"],
+                                    cells[char_arr[i, j]]["pos"]) # закрашиваем приглушённый символ
+                        screen.blit(cells[char_arr[i, j]]["surf_fg_scale"],
+                                    cells[char_arr[i, j]]["pos_scale"])
+                    elif (pause_mode_mat[i][j] == "duty" and
+                          (duty_arr[i,j]/freq_arr[i,j] <= t < 1/freq_arr[i,j])) or \
+                         (pause_mode_mat[i][j] == "pause" and
+                          (t < duty_arr[i,j]/freq_arr[i,j] + pause_arr[i,j])):
+                        if not is_off_arr[i, j]:
+                            screen.blit(cells[char_arr[i, j]]["rect_bg_scale"],
+                                        cells[char_arr[i, j]]["pos_scale"]) # закрашиваем активный символ
+                            screen.blit(cells[char_arr[i, j]]["surf_mg"],
+                                        cells[char_arr[i, j]]["pos"]) # снова рисуем приглушённый символ
+                            outlet.push_sample(["stim_off_" + char_arr[i, j]])
+                            is_off_arr[i, j] = True
+                    elif (pause_mode_mat[i][j] == "duty" and
+                          not (duty_arr[i,j]/freq_arr[i,j] <= t < 1/freq_arr[i,j])) or \
+                         (pause_mode_mat[i][j] == "pause" and
+                          not (t < duty_arr[i,j]/freq_arr[i,j] + pause_arr[i,j])):
+                            is_period_arr[i, j] = False
+                    else:
+                        raise ValueError("Error in `pause_mode`!")
         
-        screen.fill(view["bg"])
-        t = pg.time.get_ticks() / 1000 - t0
-
-        # отрисовываем все символы приглушённо (видимы всегда)
-        for cell in cells.values():
-            screen.blit(cell["surf_mg"], cell["pos"])
-            """
-            rect = cell["rect"]
-            corner_radius = cell["corner_radius"]
-            # лицевая часть клавиши
-            key_color = view["mg"]
-            border_color = tuple(max(0, v - 30) for v in key_color)
-            pg.draw.rect(screen, key_color, rect, border_radius=corner_radius)
-            pg.draw.rect(screen, border_color, rect, width=2, border_radius=corner_radius)
-            # символ внутри клавиши (приадптируем позицию по центру rect)
-            surf = cell["surf_mg"]
-            sw, sh = surf.get_size()
-            surf_pos = (rect.centerx - sw//2, rect.centery - sh//2)
-            screen.blit(surf, surf_pos)
-            """
-
-        # выбираем текущий символ и режим его отображения
-        if not is_print:
-            is_print, is_off = True, False
-            i, j = get_pos(rows, cols, n, i, j, char_mat, buf_mat)
-            print(char_mat[i, j], end='')
-            params = cells[char_mat[i, j]]
-            freq = params["freq"] + random.uniform(-params["eps_freq"], params["eps_freq"])
-            duty = params["duty"] + random.uniform(-params["eps_duty"], params["eps_duty"])
-            pause = params["pause"] + random.uniform(-params["eps_pause"], params["eps_pause"])
-            pause_mode = params["pause_mode"]
-            outlet.push_sample(["stim_on_" + char_mat[i, j]])
-
-        if t < duty/freq: # длительность показа
-            screen.blit(params["surf_bg"], params["pos"]) # закрашиваем приглушённую версию
-            screen.blit(params["surf_fg_scale"], params["pos_scale"])
-        elif (pause_mode == "duty" and (duty/freq <= t < 1/freq)) or \
-             (pause_mode == "pause" and (t < duty/freq + pause)):
-            if not is_off:
-                outlet.push_sample(["stim_off_" + char_mat[i, j]])
-                is_off = True
-        elif (pause_mode == "duty" and not (duty/freq <= t < 1/freq)) or \
-             (pause_mode == "pause" and not (t < duty/freq + pause)):
-                is_print = False
-                t0 = pg.time.get_ticks() / 1000  # сброс времени
-
         pg.display.flip()
         clock.tick(view["fps"])
 

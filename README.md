@@ -2,7 +2,7 @@
 
 ### Режим мигания
 Описание общих параметров:
-* `language` - ... `rus`, `en`
+* `language` - ... `ru`, `en`
 * `keyboard_mode` - ... `en`, `rus`, `default`
 * `numbers_flag` - ... true, false
 * `rus_text` - ...

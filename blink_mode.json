@@ -1,17 +1,17 @@
 {
   "language": "en",
   "keyboard_mode": "default",
-  "numbers_flag": false,
+  "numbers_flag": true,
   "en_text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ_",
   "rus_text": "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ_",
   "defaults": {
     "buf_size": 3,
     "pause_mode": "duty",
-    "freq": 2.5,
+    "freq": 1.0,
     "duty": 0.5,
     "pause": 1.0,
-    "eps_freq": 0.0,
-    "eps_duty": 0.0,
+    "eps_freq": 0.2,
+    "eps_duty": 0.1,
     "eps_pause": 0.0
   },
   "items": [
