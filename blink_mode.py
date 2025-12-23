@@ -12,7 +12,6 @@ os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
 os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
 
 
-numbers = "1234567890"
 name_json = "blink_mode.json"
 
 
@@ -39,7 +38,7 @@ def load_config(path):
         
         # определяем, нужны ли цифры
         if cfg.get("numbers_flag"):
-            text += numbers
+            text += cfg.get("numbers")
     elif keyboard_mode == "en":
         pass
     elif keyboard_mode == "rus":
@@ -221,23 +220,35 @@ def main():
     chars = list(view["text"] + ' ' * (rows * cols - len(view["text"])))
     char_arr = np.array(chars).reshape((rows, cols))
 
-    # буфер недавно показанных символов, для каждого символа свой (список списков)
-    buf_mat = [[None for _ in range(cols)] for _ in range(rows)]
-    for i in range(rows):
-        for j in range(cols):
-            if char_arr[i, j] != ' ':
-                buf_mat[i][j] = deque(maxlen=cells[char_arr[i, j]]["buf_size"])
-    
-    t0_arr = np.zeros((rows, cols))
-    freq_arr = np.zeros((rows, cols))
-    duty_arr = np.zeros((rows, cols))
-    pause_arr = np.zeros((rows, cols))
-    pause_mode_mat = [[None for _ in range(cols)] for _ in range(rows)]
-
     # матрицы флагов
     is_off_arr = np.ones((rows, cols), dtype=bool)
     is_period_arr = np.zeros((rows, cols), dtype=bool)
 
+    # матрицы параметров
+    t0_arr = np.zeros((rows, cols))
+    freq_arr = np.zeros((rows, cols))
+    duty_arr = np.zeros((rows, cols))
+    pause_arr = np.zeros((rows, cols))
+    buf_mat = [[None for _ in range(cols)] for _ in range(rows)]
+    pause_mode_mat = [[None for _ in range(cols)] for _ in range(rows)]
+
+    # инициализация матриц
+    for i in range(rows):
+        for j in range(cols):
+            if char_arr[i, j] != ' ':
+                # буфер недавно показанных символов, для каждого символа свой (список списков)
+                buf_mat[i][j] = deque(maxlen=cells[char_arr[i, j]]["buf_size"])
+            
+                pause_mode_mat[i][j] = cells[char_arr[i, j]]["pause_mode"]
+
+                # задание freq и duty для всех символов
+                freq_arr[i, j] = cells[char_arr[i, j]]["freq"] + \
+                                 random.uniform(-cells[char_arr[i, j]]["eps_freq"],
+                                                 cells[char_arr[i, j]]["eps_freq"])
+                duty_arr[i, j] = cells[char_arr[i, j]]["duty"] + \
+                                 random.uniform(-cells[char_arr[i, j]]["eps_duty"],
+                                                 cells[char_arr[i, j]]["eps_duty"])
+    
     # начальная отрисовка
     screen.fill(view["bg"])
     for cell in cells.values(): # отрисовываем все символы приглушённо (видимы всегда)
@@ -259,53 +270,45 @@ def main():
                 if event.key == pg.K_e:
                     outlet.push_sample(['exp_end'])
 
+        start = time.time()
         for i in range(rows):
             for j in range(cols):
                 if char_arr[i, j] != ' ':
                     if not is_period_arr[i, j]:
                         is_period_arr[i, j] = True
                         is_off_arr[i, j] = False
-                        freq_arr[i, j] = cells[char_arr[i, j]]["freq"] + \
-                                         random.uniform(
-                                             -cells[char_arr[i, j]]["eps_freq"],
-                                             cells[char_arr[i, j]]["eps_freq"])
-                        duty_arr[i, j] = cells[char_arr[i, j]]["duty"] + \
-                                         random.uniform(
-                                             -cells[char_arr[i, j]]["eps_duty"],
-                                             cells[char_arr[i, j]]["eps_duty"])
+                        # сэмплируем паузу для каждого символа
                         pause_arr[i, j] = cells[char_arr[i, j]]["pause"] + \
                                           random.uniform(
                                               -cells[char_arr[i, j]]["eps_pause"],
                                                cells[char_arr[i, j]]["eps_pause"])
-                        pause_mode_mat[i][j] = cells[char_arr[i, j]]["pause_mode"]
                         outlet.push_sample(["stim_on_" + char_arr[i, j]])
                         t0_arr[i, j] = pg.time.get_ticks() / 1000  # сброс времени
 
                     t = pg.time.get_ticks() / 1000 - t0_arr[i, j]
 
-                    if t < duty_arr[i, j]/freq_arr[i,j]: # длительность показа
+                    if t < duty_arr[i, j] / freq_arr[i, j]: # длительность показа
                         screen.blit(cells[char_arr[i, j]]["rect_bg"],
                                     cells[char_arr[i, j]]["pos"]) # закрашиваем приглушённый символ
                         screen.blit(cells[char_arr[i, j]]["surf_fg_scale"],
-                                    cells[char_arr[i, j]]["pos_scale"])
-                    elif (pause_mode_mat[i][j] == "duty" and
-                          (duty_arr[i,j]/freq_arr[i,j] <= t < 1/freq_arr[i,j])) or \
+                                    cells[char_arr[i, j]]["pos_scale"]) # рисуем активный символ
+                    elif (pause_mode_mat[i][j] == "duty" and (t < 1 / freq_arr[i, j])) or \
                          (pause_mode_mat[i][j] == "pause" and
-                          (t < duty_arr[i,j]/freq_arr[i,j] + pause_arr[i,j])):
+                          (t < duty_arr[i, j] / freq_arr[i, j] + pause_arr[i, j])):
                         if not is_off_arr[i, j]:
-                            screen.blit(cells[char_arr[i, j]]["rect_bg_scale"],
-                                        cells[char_arr[i, j]]["pos_scale"]) # закрашиваем активный символ
-                            screen.blit(cells[char_arr[i, j]]["surf_mg"],
-                                        cells[char_arr[i, j]]["pos"]) # снова рисуем приглушённый символ
-                            outlet.push_sample(["stim_off_" + char_arr[i, j]])
                             is_off_arr[i, j] = True
-                    elif (pause_mode_mat[i][j] == "duty" and
-                          not (duty_arr[i,j]/freq_arr[i,j] <= t < 1/freq_arr[i,j])) or \
+                            outlet.push_sample(["stim_off_" + char_arr[i, j]])
+                        screen.blit(cells[char_arr[i, j]]["rect_bg_scale"],
+                                    cells[char_arr[i, j]]["pos_scale"]) # закрашиваем активный символ
+                        screen.blit(cells[char_arr[i, j]]["surf_mg"],
+                                    cells[char_arr[i, j]]["pos"]) # снова рисуем приглушённый символ
+                    elif (pause_mode_mat[i][j] == "duty" and not (t < 1 / freq_arr[i, j])) or \
                          (pause_mode_mat[i][j] == "pause" and
-                          not (t < duty_arr[i,j]/freq_arr[i,j] + pause_arr[i,j])):
+                          not (t < duty_arr[i, j] / freq_arr[i, j] + pause_arr[i, j])):
                             is_period_arr[i, j] = False
                     else:
                         raise ValueError("Error in `pause_mode`!")
+        #print("time:", time.time() - start)
         
         pg.display.flip()
         clock.tick(view["fps"])

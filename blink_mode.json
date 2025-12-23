@@ -2,17 +2,18 @@
   "language": "en",
   "keyboard_mode": "default",
   "numbers_flag": true,
+  "numbers": "1234567890",
   "en_text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ_",
   "rus_text": "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ_",
   "defaults": {
     "buf_size": 3,
-    "pause_mode": "duty",
+    "pause_mode": "pause",
     "freq": 1.0,
     "duty": 0.5,
-    "pause": 1.0,
+    "pause": 0.5,
     "eps_freq": 0.2,
     "eps_duty": 0.1,
-    "eps_pause": 0.0
+    "eps_pause": 0.1
   },
   "items": [
     {
