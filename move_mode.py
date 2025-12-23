@@ -18,8 +18,8 @@ height = screen.get_height()
 
 delay = 1
 
-n_cols = 5
-n_rows = 9
+n_cols = 11 # 5
+n_rows = 4 # 9
 
 alphabet = '''
 1234567890_
@@ -59,6 +59,9 @@ clock = pygame.time.Clock()
 background = (255, 255, 255)
 letter_foreground = (0, 0, 0)
 
+#background = (0, 0, 0)
+#letter_foreground = (255, 255, 255)
+
 FPS = 60
 
 font = pygame.font.SysFont(name = 'Arial', size = 30, bold = True)
@@ -68,16 +71,23 @@ cells = {}
 #print(w)
 
 for id, char in enumerate(alphabet):
+    letter = font.render(char, True, letter_foreground)
     cells[char] = {
         'id': id,
-        'letter': font.render(char, True, letter_foreground),
+        'letter_prime': letter,
+        'letter_tmp': letter,
         #'alpha': random.randint(0, 1) / 2, #random.random(),
         'amplitude': (w / 2) * 0.9, #random.random() * 15 + 5,
-        'frequency': 1, #random.random() * 4.8 + 0.2,
+        'frequency': 0.5, #random.random() * 4.8 + 0.2,
+        't1': random.random(),
+        't2': random.random(),
+        'start_t': 0,
         'moving': False,
         'stop': False,
-        'previous_speed': 0,
+        'previous_speed': 0
     }
+    
+#print(cells['А'])
     
 #print(cells)
 
@@ -85,12 +95,12 @@ running = True
 
 start_experiment = False
 
-moving_id = random.choice(range(len(alphabet)))
+# moving_id = random.choice(range(len(alphabet)))
 
 #print(moving_id)
 
 #t0 = pygame.time.get_ticks()
-start_t = 0
+#start_t = 0
 
 while running:
     
@@ -126,12 +136,12 @@ while running:
         j, i = params['id'] // n_cols, params['id'] % n_cols
         
         
-        if params['id'] == moving_id and start_experiment:
+        if start_experiment: # params['id'] == moving_id and start_experiment:
             
             t = pygame.time.get_ticks() - t0
             
             try:
-                speed = speed_func(t - start_t, params['frequency'])
+                speed = speed_func(t - params['start_t'], params['frequency'], params['t1'], params['t2'])
                 params['previous_speed'] = speed
                 if speed != 0 and not params['moving']:
                     params['moving'] = True
@@ -146,16 +156,19 @@ while running:
                     else:
                         print(f'letter_{char}_end')
             except ValueError:
-                start_t = t
-                speed = speed_func(t - start_t, params['frequency'])
+                params['start_t'] = t
+                params['t1'] = random.random()
+                params['t2'] = random.random()
+                speed = speed_func(t - params['start_t'], params['frequency'], params['t1'], params['t2'])
                 params['previous_speed'] = 0
-                moving_id = random.choice(range(len(alphabet)))
+                #moving_id = random.choice(range(len(alphabet)))
                 #outlet.push_sample([f'letter_{char}'])
                 params['moving'] = False
                 params['stop'] = False
             
             dx = params['amplitude'] * speed
             dy = 0
+            params['letter_tmp'] = pygame.transform.smoothscale(params['letter_prime'], (params['letter_prime'].get_width() * (speed / 2 + 1), params['letter_prime'].get_height() * (speed / 2 + 1)))
             
             
         else:
@@ -182,7 +195,7 @@ while running:
         #dy = params['amplitude'] * diry * speed
         
         #pygame.draw.rect(screen, (255, 0, 0), (i * w, j * h, w, h), 1)
-        screen.blit(params['letter'], (i * w + w / 2 - params['letter'].get_width() / 2 + dx, j * h + h / 2 - params['letter'].get_height() / 2 - dy))
+        screen.blit(params['letter_tmp'], (i * w + w / 2 - params['letter_tmp'].get_width() / 2 + dx, j * h + h / 2 - params['letter_tmp'].get_height() / 2 - dy))
         #screen.blit(params['letter'], (i * w + w / 2 - params['letter'].get_width() / 2, j * h + h / 2 - params['letter'].get_height() / 2))
     
     
