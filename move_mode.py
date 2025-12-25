@@ -1,5 +1,6 @@
 import pygame, math, random, os
 from pylsl import StreamInfo, StreamOutlet
+import numpy as np
 
 #set up pinned window on second monitor
 x = -1920
@@ -78,9 +79,9 @@ for id, char in enumerate(alphabet):
         'letter_tmp': letter,
         #'alpha': random.randint(0, 1) / 2, #random.random(),
         'amplitude': (w / 2) * 0.9, #random.random() * 15 + 5,
-        'frequency': 0.5, #random.random() * 4.8 + 0.2,
-        't1': random.random(),
-        't2': random.random(),
+        'frequency': abs(np.random.normal(10, 1)), #random.random() * 4.8 + 0.2,
+        't1': random.random() / 10,
+        't2': random.random() / 10,
         'start_t': 0,
         'moving': False,
         'stop': False,
@@ -157,8 +158,8 @@ while running:
                         print(f'letter_{char}_end')
             except ValueError:
                 params['start_t'] = t
-                params['t1'] = random.random()
-                params['t2'] = random.random()
+                params['t1'] = random.random() / 10
+                params['t2'] = random.random() / 10
                 speed = speed_func(t - params['start_t'], params['frequency'], params['t1'], params['t2'])
                 params['previous_speed'] = 0
                 #moving_id = random.choice(range(len(alphabet)))
@@ -166,9 +167,10 @@ while running:
                 params['moving'] = False
                 params['stop'] = False
             
-            dx = params['amplitude'] * speed
+            # dx = params['amplitude'] * speed
+            dx = 0
             dy = 0
-            params['letter_tmp'] = pygame.transform.smoothscale(params['letter_prime'], (params['letter_prime'].get_width() * (speed / 2 + 1), params['letter_prime'].get_height() * (speed / 2 + 1)))
+            params['letter_tmp'] = pygame.transform.smoothscale(params['letter_prime'], (params['letter_prime'].get_width() * (speed + 1), params['letter_prime'].get_height() * (speed + 1)))
             
             
         else:
