@@ -211,9 +211,10 @@ while running:
             
             # x coord moving
             dx = params['amplitude_x'] * speed if data_config['x_move'] else 0
+            # print(dx)
             
             # y coord moving
-            dx = params['amplitude_y'] * speed if data_config['y_move'] else 0
+            dy = params['amplitude_y'] * speed if data_config['y_move'] else 0
             
             # 'z' coord moving
             params['letter_tmp'] = pygame.transform.smoothscale(
