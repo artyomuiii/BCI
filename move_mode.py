@@ -8,25 +8,28 @@ with open('move_mode.json', encoding='utf-8') as file:
     data_config = json.load(file)
 
 # set up pinned window on second monitor
-x = data_config['window_x']
-y = data_config['window_y']
-os.environ['SDL_VIDEO_WINDOW_POS'] = f'{x},{y}'
-os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
+def pinned_window(data_config):
+    x = data_config['window_x']
+    y = data_config['window_y']
+    os.environ['SDL_VIDEO_WINDOW_POS'] = f'{x},{y}'
+    os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
 
 pygame.init()
 
-flags = pygame.FULLSCREEN
-screen = pygame.display.set_mode(size=(0, 0), flags=flags)
+pinned_window(data_config)
 
-width = screen.get_width()
-height = screen.get_height()
+
+screen = pygame.display.set_mode(size=(0, 0), flags=pygame.FULLSCREEN)
+
+width, height = screen.get_width(), screen.get_height()
 
 n_cols = data_config['num_cols'] # 11, 5
 n_rows = data_config['num_rows'] # 4, 9
 
-alphabet = data_config['alphabet'].replace('\n', '')
-
 w, h = width // n_cols, height // n_rows
+
+
+alphabet = data_config['alphabet']
 
 sec_in_msec = 1e-3
 
@@ -79,6 +82,10 @@ def get_move_info(speed):
     z_move = sign(speed) if data_config['z_move'] else 0
     return f"x: {x_move}, y: {y_move}, z: {z_move}"
 
+def send(send_text):
+    log.write(send_text + '\n')
+    outlet.push_sample([send_text])
+
 info = StreamInfo(name = 'annotations',
                   type = 'Events',
                   channel_count=1,
@@ -86,7 +93,6 @@ info = StreamInfo(name = 'annotations',
                   channel_format='string',
                   source_id='my_marker_stream')
 outlet = StreamOutlet(info)
-lsl_output = data_config['lsl_output']
 
 pygame.display.set_caption('Experiment')
 clock = pygame.time.Clock()
@@ -98,10 +104,13 @@ background = data_config['background']
 letter_foreground = data_config['letter_foreground']
 amplitude_x_scale = data_config['amplitude_x_scale']
 amplitude_y_scale = data_config['amplitude_y_scale']
-word = data_config["word"]
-t_pause = data_config["t_pause"]
-t_cont = data_config["t_cont"]
-t_show = data_config["t_show"]
+text = data_config["text"]
+t_pause = data_config["t_pause"] / sec_in_msec
+t_cont = data_config["t_cont"] / sec_in_msec
+t_show = data_config["t_show"] / sec_in_msec
+start_fg = data_config["start_fg"]
+end_fg = data_config["end_fg"]
+is_random_delay = data_config["is_random_delay"]
 
 font = pygame.font.SysFont(name=font_name, size=font_size, bold=True)
 
@@ -113,11 +122,11 @@ for id, char in enumerate(alphabet):
         'id': id,
         'letter_prime': letter,
         'letter_tmp': letter,
-        'amplitude_x': (w / 2) * amplitude_x_scale, #random.random() * 15 + 5,
+        'amplitude_x': (w / 2) * amplitude_x_scale,
         'amplitude_y': (h / 2) * amplitude_y_scale,
-        'frequency': set_freq(), #random.random() * 4.8 + 0.2,
-        't1': set_t1(),
-        't2': set_t2(),
+        'frequency': set_freq(),
+        't1': set_t1(is_random_delay),
+        't2': set_t2(is_random_delay),
         'start_t': 0,
         'moving': False,
         'stop': False,
@@ -127,7 +136,8 @@ for id, char in enumerate(alphabet):
 running = True
 start_experiment = False
 
-cur_simbol = word[0]
+cur_simbol_idx = 0
+t_cur = None
 
 with open('log.txt', 'w', encoding='utf-8') as log:
 
@@ -144,45 +154,37 @@ with open('log.txt', 'w', encoding='utf-8') as log:
                 if event.key == pygame.K_s:
                     start_experiment = True
                     t0 = pygame.time.get_ticks()
-                    #print('start_experiment')
-                    log.write('start_experiment\n')
-                    if lsl_output:
-                        outlet.push_sample(['start_experiment'])
+                    send('start_experiment')
                 
                 if event.key == pygame.K_e:
                     start_experiment = False
-                    #print('end_experiment')
-                    log.write('end_experiment\n')
-                    if lsl_output:
-                        outlet.push_sample(['end_experiment'])
+                    send('end_experiment')
+
+                if event.key == pygame.K_SPACE:
+                    send('pressed_space')
         
         screen.fill(background)
         
         for char, params in cells.items():
             j, i = params['id'] // n_cols, params['id'] % n_cols
             
-            if start_experiment: # params['id'] == moving_id and start_experiment:
+            if start_experiment:
                 
                 t = pygame.time.get_ticks() - t0
                 
                 try:
                     speed = speed_func(t - params['start_t'], params['frequency'],
-                                    params['t1'], params['t2'])
+                                       params['t1'], params['t2'])
                     params['previous_speed'] = speed
+
                     if speed != 0 and not params['moving']:
                         params['moving'] = True
-                        str_info = f'{char}_start_{get_move_info(speed)}'
-                        #print(str_info)
-                        log.write(str_info + '\n')
-                        if lsl_output:
-                            outlet.push_sample([str_info])
-                    if speed == 0 and params['previous_speed'] == 0 and not params['stop'] and params['moving']:
+                        send(f'{char}_start_{get_move_info(speed)}')
+                    
+                    if speed == 0 and params['previous_speed'] == 0 and \
+                        not params['stop'] and params['moving']:
                         params['stop'] = True
-                        str_info = f'{char}_end'
-                        #print(str_info)
-                        log.write(str_info + '\n')
-                        if lsl_output:
-                            outlet.push_sample([str_info])
+                        send(f'{char}_end')
                 
                 except ValueError:
                     params['start_t'] = t
@@ -200,7 +202,7 @@ with open('log.txt', 'w', encoding='utf-8') as log:
                 # y coord moving
                 dy = params['amplitude_y'] * speed if data_config['y_move'] else 0
                 
-                # 'z' coord moving
+                # z coord moving
                 params['letter_tmp'] = pygame.transform.smoothscale(
                     params['letter_prime'], 
                     (
@@ -213,8 +215,33 @@ with open('log.txt', 'w', encoding='utf-8') as log:
                 dx = 0
                 dy = 0
             
-            #if char == cur_simbol:
-            #    old_size = params['letter_tmp'].get_size()
+
+            if char == text[cur_simbol_idx] and start_experiment:
+
+                if t_cur is None:
+                    t_cur = pygame.time.get_ticks()
+                    send(f"{char}_show_start")
+
+                elif t_cur < pygame.time.get_ticks() <= t_cur + t_cont:
+                    params['letter_tmp'] = pygame.transform.smoothscale(
+                        font.render(char, True, start_fg), params['letter_tmp'].get_size())
+                
+                elif t_cur + t_cont < pygame.time.get_ticks() <= t_cur + t_show - t_cont:
+                    pass
+                
+                elif t_cur + t_show - t_cont < pygame.time.get_ticks() <= t_cur + t_show:
+                    params['letter_tmp'] = pygame.transform.smoothscale(
+                        font.render(char, True, end_fg), params['letter_tmp'].get_size())
+                
+                elif t_cur + t_show < pygame.time.get_ticks() <= t_cur + t_show + t_pause:
+                    pass
+                
+                elif cur_simbol_idx < len(text) - 1:
+                    send(f"{char}_show_end")   
+                    cur_simbol_idx += 1
+                    t_cur = None
+
+
 
             screen.blit(params['letter_tmp'],
                         (i * w + w / 2 - params['letter_tmp'].get_width() / 2 + dx,
