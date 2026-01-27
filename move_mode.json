@@ -1,0 +1,18 @@
+{
+    "window_x": -1920,
+    "window_y": 0,
+    "num_cols": 11,
+    "num_rows": 4,
+    "alphabet": "1234567890_ЙЦУКЕНГШЩЗХФЫВАПРОЛДЖЭЁЯЧСМИТЬБЮЪ",
+    "lsl_output": true,
+    "FPS": 60,
+    "font_name": "Arial",
+    "font_size": 30,
+    "x_move": false,
+    "y_move": false,
+    "z_move": true,
+    "frequency_mean": 4,
+    "frequency_std": 1,
+    "delay_t1_scale": 0.5,
+    "delay_t2_scale": 0.5
+}

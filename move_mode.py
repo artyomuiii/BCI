@@ -1,11 +1,17 @@
 import pygame, math, random, os
 from pylsl import StreamInfo, StreamOutlet
 import numpy as np
+import json
 
-#set up pinned window on second monitor
-x = -1920
-y = 0
-os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
+with open('move_mode.json', encoding = 'utf-8') as file:
+    data_config = json.load(file)
+    
+# print(data_config)
+
+# set up pinned window on second monitor
+x = data_config['window_x']
+y = data_config['window_y']
+os.environ['SDL_VIDEO_WINDOW_POS'] = f'{x},{y}'
 os.environ['SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS'] = '0'
 
 
@@ -14,20 +20,15 @@ pygame.init()
 flags = pygame.FULLSCREEN
 screen = pygame.display.set_mode(size = (0, 0), flags = flags)
 
-width  = screen.get_width()
+width = screen.get_width()
 height = screen.get_height()
 
-delay = 1
+#delay = 1
 
-n_cols = 11 # 5
-n_rows = 4 # 9
+n_cols = data_config['num_cols'] # 11, 5
+n_rows = data_config['num_rows'] # 4, 9
 
-alphabet = '''
-1234567890_
-ЙЦУКЕНГШЩЗХ
-ФЫВАПРОЛДЖЭ
-ЁЯЧСМИТЬБЮЪ
-'''.replace('\n', '')
+alphabet = data_config['alphabet'].replace('\n', '')
 
 w, h = width // n_cols, height // n_rows
 
@@ -35,13 +36,46 @@ sec_in_msec = 1e-3
 
 #speed_func = lambda t, freq: math.sin(t * freq * math.tau * sec_in_msec)
 
-def speed_func(t, freq = 1, t1 = 0.5, t2 = 0.5):
+freq_mean = data_config['frequency_mean']
+
+freq_std = data_config['frequency_std']
+
+delay_t1_scale = data_config['delay_t1_scale']
+
+delay_t2_scale = data_config['delay_t2_scale']
+
+def set_t1():
+    
+    return random.random() * delay_t1_scale
+
+def set_freq():
+    
+    return abs(np.random.normal(0, freq_std)) + freq_mean
+
+def set_t2():
+    
+    return random.random() * delay_t2_scale
+
+def speed_func(t, freq = 1, t1 = 0.5, t2 = 0.5, forward = True):
+    
+    if freq <= 0: raise ValueError('freq must be positive')
+    
+    if t1 < 0: raise ValueError('t1 must be non negative')
+    
+    if t2 < 0: raise ValueError('t2 must be non negative')
+    
     if t1 / sec_in_msec <= t <= (t1 + 1 / freq) / sec_in_msec:
+        
         return math.sin((t - t1 / sec_in_msec) * math.tau * freq * sec_in_msec)
+    
     elif 0 <= t < t1 / sec_in_msec or (t1 + 1 / freq) / sec_in_msec < t <= (t1 + 1 / freq + t2) / sec_in_msec:
+        
         return 0
+    
     else:
-        raise ValueError(f"t must be between 0 and {(t1 + 1 / freq + t2) / sec_in_msec}")
+        
+        raise ValueError(f't must be between 0 and {(t1 + 1 / freq + t2) / sec_in_msec}')
+    
     #return math.sin((t - t1) * math.tau * freq * sec_in_msec) if t1 / sec_in_msec <= t <= (t1 + 1 / freq) / sec_in_msec else 0 if 0 <= t < t1 / sec_in_msec or (t1 + 1 / freq) / sec_in_msec < t < (t1 + 1 / freq + t2) / sec_in_msec else ValueError(f"t must be between 0 and {(t1 + 1 / freq + t2) / sec_in_msec}")
 
 info = StreamInfo(name = 'annotations', type = 'Events', channel_count = 1, nominal_srate = 0, channel_format = 'string', source_id = 'my_marker_stream')
@@ -50,7 +84,7 @@ outlet = StreamOutlet(info)
 
 print('lsl outlet is created')
 
-lsl_output = True
+lsl_output = data_config['lsl_output']
 
 #print(pygame.font.get_fonts())
 
@@ -63,13 +97,20 @@ letter_foreground = (0, 0, 0)
 #background = (0, 0, 0)
 #letter_foreground = (255, 255, 255)
 
-FPS = 60
+FPS = data_config['FPS']
 
-font = pygame.font.SysFont(name = 'Arial', size = 30, bold = True)
+font_name = data_config['font_name']
+font_size = data_config['font_size']
+
+font = pygame.font.SysFont(name = font_name, size = font_size, bold = True)
 
 cells = {}
 
 #print(w)
+
+amplitude_x_scale = 0.9
+
+amplitude_y_scale = 0.9
 
 for id, char in enumerate(alphabet):
     letter = font.render(char, True, letter_foreground)
@@ -78,10 +119,11 @@ for id, char in enumerate(alphabet):
         'letter_prime': letter,
         'letter_tmp': letter,
         #'alpha': random.randint(0, 1) / 2, #random.random(),
-        'amplitude': (w / 2) * 0.9, #random.random() * 15 + 5,
-        'frequency': abs(np.random.normal(10, 1)), #random.random() * 4.8 + 0.2,
-        't1': random.random() / 10,
-        't2': random.random() / 10,
+        'amplitude_x': (w / 2) * amplitude_x_scale, #random.random() * 15 + 5,
+        'amplitude_y': (h / 2) * amplitude_y_scale,
+        'frequency': set_freq(), #random.random() * 4.8 + 0.2,
+        't1': set_t1(),
+        't2': set_t2(),
         'start_t': 0,
         'moving': False,
         'stop': False,
@@ -158,8 +200,8 @@ while running:
                         print(f'letter_{char}_end')
             except ValueError:
                 params['start_t'] = t
-                params['t1'] = random.random() / 10
-                params['t2'] = random.random() / 10
+                params['t1'] = set_t1()
+                params['t2'] = set_t2()
                 speed = speed_func(t - params['start_t'], params['frequency'], params['t1'], params['t2'])
                 params['previous_speed'] = 0
                 #moving_id = random.choice(range(len(alphabet)))
@@ -167,10 +209,20 @@ while running:
                 params['moving'] = False
                 params['stop'] = False
             
-            # dx = params['amplitude'] * speed
-            dx = 0
-            dy = 0
-            params['letter_tmp'] = pygame.transform.smoothscale(params['letter_prime'], (params['letter_prime'].get_width() * (speed + 1), params['letter_prime'].get_height() * (speed + 1)))
+            # x coord moving
+            dx = params['amplitude_x'] * speed if data_config['x_move'] else 0
+            
+            # y coord moving
+            dx = params['amplitude_y'] * speed if data_config['y_move'] else 0
+            
+            # 'z' coord moving
+            params['letter_tmp'] = pygame.transform.smoothscale(
+                params['letter_prime'], 
+                (
+                    params['letter_prime'].get_width() * (speed + 1), 
+                    params['letter_prime'].get_height() * (speed + 1)
+                )
+                ) if data_config['z_move'] else params['letter_prime']
             
             
         else:
