@@ -24,8 +24,9 @@
     "y_move": false,
     "z_move": true,
 
-    "freq_mean": 1,
-    "freq_std": 0.01,
+    "freq_mean": 1.5,
+    "freq_std": 0.1,
+
     "delay_t1_scale": 0.5,
     "delay_t2_scale": 0.5,
 
@@ -34,7 +35,7 @@
     "start_fg": [0, 255, 0],
     "end_fg": [255, 0, 0],
 
-    "is_random_delay": false,
+    "is_random_delay": true,
 
     "amplitude_x_scale": 0.5,
     "amplitude_y_scale": 0.5

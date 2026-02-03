@@ -1,3 +1,4 @@
+import time
 import pygame as pg
 import numpy as np
 import math, random, os, json
@@ -88,7 +89,7 @@ def get_move_info(speed, conf):
 
 def send(file, send_text):
     outlet.push_sample([send_text])
-    file.write(send_text + '\n')
+    file.write(f"{pg.time.get_ticks()/1000} " + send_text + '\n')
 
 
 info = StreamInfo(name = 'annotations',
@@ -136,7 +137,7 @@ start_experiment = False
 cur_simbol_idx = 0
 t_cur = None
 
-with open(conf["log.txt"], 'w', encoding='utf-8') as log:
+with open(conf["lof_file_name"], 'w', encoding='utf-8') as log:
 
     while running:
 
@@ -151,14 +152,14 @@ with open(conf["log.txt"], 'w', encoding='utf-8') as log:
                 if event.key == pg.K_s:
                     start_experiment = True
                     t0 = pg.time.get_ticks()
-                    send('start_experiment')
-                
+                    send(log, 'start_experiment')
+
                 if event.key == pg.K_e:
                     start_experiment = False
-                    send('end_experiment')
+                    send(log, 'end_experiment')
 
                 if event.key == pg.K_SPACE:
-                    send('pressed_space')
+                    send(log, 'pressed_space')
         
         screen.fill(conf['bg'])
         
@@ -177,19 +178,21 @@ with open(conf["log.txt"], 'w', encoding='utf-8') as log:
                     cell['prev_speed'] = speed
 
                     if speed != 0 and not cell['moving']:
-                        send(f'{char}_start_{get_move_info(speed, conf)}')
+                        send(log, f'{char}_start_{get_move_info(speed, conf)}')
                         cell['moving'] = True
                     
                     if speed == 0 and cell['prev_speed'] == 0 and cell['moving']:
-                        send(f'{char}_end')
+                        send(log, f'{char}_end')
                         cell['moving'] = False
-                
+
+                    rect_x = i * w + w / 2 - cell['letter_tmp'].get_width() / 2
+                    rect_y = j * h + h / 2 - cell['letter_tmp'].get_height() / 2
+                    rect_width = cell['letter_tmp'].get_width()
+                    rect_height = cell['letter_tmp'].get_height()
+                        
+
                 except ValueError:
                     cell['start_t'] = t
-                    cell['t1'] = set_t(conf['delay_t1_scale'],
-                                       conf["is_random_delay"])
-                    cell['t2'] = set_t(conf['delay_t2_scale'],
-                                       conf["is_random_delay"])
                     speed = speed_func(t - cell['start_t'],
                                        cell['freq'],
                                        cell['t1'],
@@ -216,7 +219,7 @@ with open(conf["log.txt"], 'w', encoding='utf-8') as log:
 
                 if t_cur is None:
                     t_cur = pg.time.get_ticks()
-                    send(f"{char}_show_start")
+                    send(log, f"{char}_show_start")
 
                 elif t_cur < pg.time.get_ticks() <= t_cur + t_cont:
                     cell['letter_tmp'] = pg.transform.smoothscale(
@@ -235,7 +238,7 @@ with open(conf["log.txt"], 'w', encoding='utf-8') as log:
                     pass
                 
                 elif cur_simbol_idx < len(text) - 1:
-                    send(f"{char}_show_end")
+                    send(log, f"{char}_show_end")
                     cur_simbol_idx += 1
                     t_cur = None
 
@@ -243,7 +246,7 @@ with open(conf["log.txt"], 'w', encoding='utf-8') as log:
             screen.blit(cell['letter_tmp'],
                         (i * w + w / 2 - cell['letter_tmp'].get_width() / 2 + dx,
                          j * h + h / 2 - cell['letter_tmp'].get_height() / 2 + dy))
-        
+
         pg.display.flip()
         dt = clock.tick(conf['FPS'])
 
