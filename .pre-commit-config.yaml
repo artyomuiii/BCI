@@ -23,4 +23,4 @@ repos:
     hooks:
       - id: flake8
         additional_dependencies: [flake8-bugbear]
-        args: ["--max-line-length=80", "--ignore=E203,W503,E501"]
+        args: ["--max-line-length=88", "--ignore=E203,W503,E501"]

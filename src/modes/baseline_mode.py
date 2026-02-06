@@ -65,7 +65,7 @@ def load_config(path):
 
 
 # --- main ---
-cfg_path = sys.argv[1] if len(sys.argv) > 1 else "config.json"
+cfg_path = sys.argv[1] if len(sys.argv) > 1 else "baseline_mode.json"
 
 # info = StreamInfo(name='annotations', type='Events', channel_count=1, nominal_srate=0, channel_format='string', source_id='my_marker_stream')
 
@@ -181,9 +181,7 @@ while True:
     # print(t)
     s = math.sin
     screen.fill(view["bg"])
-    for index, (surf_stat, surf, bx, by, f, amp, ph, dx, dy, flg) in enumerate(
-        cells
-    ):
+    for index, (surf_stat, surf, bx, by, f, amp, ph, dx, dy, flg) in enumerate(cells):
         disp = amp * s(TWOPI * f * t + ph)
         if abs(disp) < 1 and flg:
             dx, dy = math.cos(TWOPI * random()), math.sin(TWOPI * random())
