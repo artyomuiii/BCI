@@ -84,6 +84,7 @@ def main():
                     ),
                 )
 
+            # за раз отображает все рисования
             pg.display.flip()
             clock.tick(cfg["FPS"])
 

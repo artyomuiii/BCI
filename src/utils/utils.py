@@ -68,10 +68,20 @@ def get_speed(t, freq, delay_before, delay_after):
 
 
 def get_move_info(speed, cfg):
-    is_x_move = np.sign(speed) if cfg["is_x_move"] else 0
-    is_y_move = np.sign(speed) if cfg["is_y_move"] else 0
-    is_z_move = np.sign(speed) if cfg["is_z_move"] else 0
-    return f"x: {is_x_move}, y: {is_y_move}, z: {is_z_move}"
+    if cfg["mode"] == "blink":
+        info = f"scale: {cfg["blink_scale"]}"
+
+    elif cfg["mode"] == "move":
+        is_x_move = np.sign(speed) if cfg["is_x_move"] else 0
+        is_y_move = np.sign(speed) if cfg["is_y_move"] else 0
+        is_z_move = np.sign(speed) if cfg["is_z_move"] else 0
+
+        info = f"x: {is_x_move}, y: {is_y_move}, z: {is_z_move}"
+
+    else:
+        raise ValueError("Incorrect 'mode' value!")
+
+    return info
 
 
 def send(outlet, file, send_text):
@@ -133,7 +143,7 @@ def _mode_processing(char, cell, speed, cfg, font):
     """
     Задание логики отображения символов в зависимости от выбранного режима работы
 
-    :return: dx, dy
+    :return: dx, dy, letter_tmp
     """
     if cfg["mode"] == "blink":
         # приращений нет
@@ -221,6 +231,10 @@ def cell_processing(char, cell, is_start_exp, t0, outlet, log, cfg, font):
             speed = 0
             cell["prev_speed"] = 0
             cell["is_moving"] = False
+
+            # паузы между показами букв сделать случайными
+            cell["delay_before"] = set_delay(cfg["delay_before"], cfg["is_rand_delay"])
+            cell["delay_after"] = set_delay(cfg["delay_after"], cfg["is_rand_delay"])
 
         dx, dy, letter_tmp = _mode_processing(char, cell, speed, cfg, font)
 
