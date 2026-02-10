@@ -4,6 +4,8 @@
     "num_cols": 11,
     "num_rows": 4,
     "text": "КРАН",
+    "mode": "blink",
+    "blink_scale": 2,
     "t_pause": 1,
     "t_cont": 2,
     "t_show": 4,
@@ -27,6 +29,11 @@
         0,
         0,
         0
+    ],
+    "fg_light": [
+        100,
+        100,
+        100
     ],
     "start_fg": [
         0,

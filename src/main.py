@@ -58,7 +58,9 @@ def main():
             for char, cell in cells.items():
                 i, j = cell["id"] // n_cols, cell["id"] % n_cols
 
-                dx, dy = cell_processing(cell, char, is_start_exp, t0, outlet, log, cfg)
+                dx, dy, cell["letter_tmp"] = cell_processing(
+                    char, cell, is_start_exp, t0, outlet, log, cfg, font
+                )
 
                 t_cur, cur_simbol_id, is_end = hint_processing(
                     char,

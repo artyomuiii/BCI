@@ -129,15 +129,64 @@ def event_processing(outlet, log, is_running, is_start_exp, t0):
     return is_running, is_start_exp, t0
 
 
-def cell_processing(cell, char, is_start_exp, t0, outlet, log, cfg):
+def _mode_processing(char, cell, speed, cfg, font):
+    """
+    Задание логики отображения символов в зависимости от выбранного режима работы
+
+    :return: dx, dy
+    """
+    if cfg["mode"] == "blink":
+        # приращений нет
+        dx, dy = 0, 0
+
+        # цвет и масштаб символа зависят от того, сейчас ли фаза дв-ия
+        if speed or cell["prev_speed"]:
+            color = cfg["fg"]
+            scale = cfg["blink_scale"]
+        else:
+            color = cfg["fg_light"]
+            scale = 1
+
+        letter_tmp = pg.transform.smoothscale(
+            font.render(char, True, color),
+            (
+                cell["letter"].get_width() * scale,
+                cell["letter"].get_height() * scale,
+            ),
+        )
+
+    elif cfg["mode"] == "move":
+        # считаем приращения
+        dx = cell["amp_x"] * speed if cfg["is_x_move"] else 0
+        dy = cell["amp_y"] * speed if cfg["is_y_move"] else 0
+
+        # новый отмасштабированный рендер буквы
+        letter_tmp = (
+            pg.transform.smoothscale(
+                cell["letter"],
+                (
+                    # [-1, 1] -> [0, 2] - увеличение размера до 2ух раз
+                    cell["letter"].get_width() * (speed + 1),
+                    cell["letter"].get_height() * (speed + 1),
+                ),
+            )
+            if cfg["is_z_move"]
+            else cell["letter"]
+        )
+
+    else:
+        raise ValueError("Incorrect 'mode' value!")
+
+    return dx, dy, letter_tmp
+
+
+def cell_processing(char, cell, is_start_exp, t0, outlet, log, cfg, font):
     """
     Обработка каждого эл-та в цикле - вычисление dx, dy, пересчёт визуализации в
         зав-ти от скорости дв-я
 
-    :return: dx, dy
+    :return: dx, dy, letter_tmp
     """
-    dx, dy = 0, 0
-
     if is_start_exp:
 
         t = pg.time.get_ticks() - t0
@@ -173,24 +222,12 @@ def cell_processing(cell, char, is_start_exp, t0, outlet, log, cfg):
             cell["prev_speed"] = 0
             cell["is_moving"] = False
 
-        # считаем приращения
-        dx = cell["amp_x"] * speed if cfg["is_x_move"] else 0
-        dy = cell["amp_y"] * speed if cfg["is_y_move"] else 0
+        dx, dy, letter_tmp = _mode_processing(char, cell, speed, cfg, font)
 
-        cell["letter_tmp"] = (
-            pg.transform.smoothscale(
-                cell["letter"],
-                (
-                    # [-1, 1] -> [0, 2] - увеличение размера до 2ух раз
-                    cell["letter"].get_width() * (speed + 1),
-                    cell["letter"].get_height() * (speed + 1),
-                ),
-            )
-            if cfg["is_z_move"]
-            else cell["letter"]
-        )
+    else:
+        dx, dy, letter_tmp = 0, 0, cell["letter"]
 
-    return dx, dy
+    return dx, dy, letter_tmp
 
 
 def hint_processing(
