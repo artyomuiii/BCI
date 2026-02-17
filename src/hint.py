@@ -1,3 +1,6 @@
+import pygame as pg
+
+
 class HintManager:
     def __init__(self, config, grid, outlet, font):
         self.text = config.text
@@ -19,13 +22,12 @@ class HintManager:
         self.phase_start = 0
         self.current_cell = None
 
-    def start(self, current_time: int):
+    def start(self):
         """Начинает показ подсказок с первой буквы"""
-        # TODO current_time не нравится тут
         self.current_idx = 0
-        self._show_next(current_time)
+        self._show_next()
 
-    def _show_next(self, current_time: int):
+    def _show_next(self):
         if self.current_idx >= len(self.text):
             return
 
@@ -33,18 +35,18 @@ class HintManager:
 
         self.current_cell = self.grid.get_cell(char)
         self.state = "showing"
-        self.phase_start = current_time
+        self.phase_start = pg.time.get_ticks()
         self.outlet.send(f"show_{char}_start")
 
-    def update(self, current_time: int, is_active: bool):
+    def update(self, is_active: bool):
         if not is_active or self.state == "idle":
             return
 
         cell = self.current_cell
 
-        elapsed = current_time - self.phase_start
+        elapsed = pg.time.get_ticks() - self.phase_start
 
-        if self.state == "showing":
+        if self.state in ["showing", "pausing"]:
             if elapsed <= self.t_cont:
                 # Подсветка в начале, чтобы обратить внимание на букву
                 surf = self.font.render(cell.char, True, self.fg_start)
@@ -52,7 +54,6 @@ class HintManager:
 
             elif elapsed <= self.t_show - self.t_cont:
                 # Середина – обычный вид
-                # TODO мб сделать так, чтобы clear_override вызывался только 1 раз
                 cell.clear_override()
 
             elif elapsed <= self.t_show:
@@ -71,8 +72,7 @@ class HintManager:
                 # Переход к следующей букве
                 self.current_idx += 1
                 if self.current_idx < len(self.text):
-                    # TODO опять проблема с current_time
-                    self._show_next(current_time)
+                    self._show_next()
                 else:
                     self.state = "idle"
                     self.current_cell = None

@@ -4,7 +4,6 @@ import random
 import numpy as np
 
 
-# TODO мб, чтобы не смущать, назвать это ФазаГенератор (при мигании дв-я нету)
 class MovementGenerator:
     @staticmethod
     def get_move_speed(

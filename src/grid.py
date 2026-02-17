@@ -17,7 +17,6 @@ class Grid:
             self.cells[char] = cell
 
     def update(self, is_active: bool):
-        # TODO с current_time непорядок
         for cell in self.cells.values():
             current_time = pg.time.get_ticks()
             cell.update(current_time, is_active)

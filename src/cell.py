@@ -1,4 +1,3 @@
-import numpy as np
 import pygame as pg
 
 
@@ -11,17 +10,19 @@ class Cell:
         self.char = char
         self.row = row
         self.col = col
-        self.font = font
         self.config = config
         self.outlet = outlet
         self.mg = movement_gen
+
+        # Шрифты
+        self.font = font  # шрифт с меняющимся размером
+        self.default_font = font  # шрифт с заданным размером
 
         # Статические поверхности
         self.letter = font.render(char, True, config.fg)
         self.letter_blink = font.render(char, True, config.fg_blink)
 
         # Прямоугольник и его раздутая версия для blink-подсветки
-        # TODO мб пересмотреть, улучшить
         cell_w, cell_h = cell_size
         x = col * cell_w + cell_w // 2
         y = row * cell_h + cell_h // 2
@@ -34,7 +35,6 @@ class Cell:
         self.amp_y = (cell_h / 2) * config.amp_y_scale
 
         # Параметры движения
-        # TODO (генерируются один раз) вообще говоря нет, но пусть пока будет так (можно "заморозить" с параметрами и вызывать)
         self.freq = self.mg.generate_freq(config.freq_mean, config.freq_std)
         self.delay_before = self.mg.generate_delay(
             config.delay_before, config.is_rand_delay
@@ -46,7 +46,7 @@ class Cell:
         # Динамические состояния
         self.start_t = 0  # момент начала текущего цикла (мс)
         self.prev_speed = 0.0
-        self.current_speed = 0.0  # TODO зачем current_speed нужен?
+        self.current_speed = 0.0
         self.is_moving = False
         self.dx = 0
         self.dy = 0
@@ -55,7 +55,6 @@ class Cell:
 
     def update(self, current_time: int, is_active: bool):
         if not is_active:
-            self.current_surface = self.letter
             self.dx = self.dy = 0
             self.current_speed = 0
             return
@@ -86,8 +85,7 @@ class Cell:
 
         # Переполнение времени – перезапуск цикла
         except ValueError:
-            # TODO тут бы тоже вызывал ф-цию из pg
-            self.start_t = current_time
+            self.start_t = pg.time.get_ticks()
 
             # Пересчитываем паузы между буквами -> вносим случайность
             self.delay_before = self.mg.generate_delay(
@@ -106,7 +104,6 @@ class Cell:
 
     def _update_render(self):
         """Обновляет surface и смещения на основе текущей скорости и режима"""
-        # TODO где это исп-ся?
         if self.override_surface is not None:
             self.current_surface = self.override_surface
             self.dx = self.dy = 0
@@ -130,11 +127,20 @@ class Cell:
 
             # Новый отмасштабированный рендер буквы
             if self.config.is_z_move:
-                scale = self.current_speed + 1.0
                 # [-1, 1] -> [0, 2] - увеличение размера от 0 до 2ух раз
+                scale = self.current_speed + 1.0
+
+                # Масштабирование старого шрифта
                 w = int(self.letter.get_width() * scale)
                 h = int(self.letter.get_height() * scale)
                 self.current_surface = pg.transform.smoothscale(self.letter, (w, h))
+
+                # Создание нового шрифта
+                # TODO: для лучшей производительности можно шкалировать по сетке, перед
+                #   этим кэшируя шрифты
+                # new_size = int(self.default_font.get_height() * scale)
+                # self.font = pg.font.SysFont(self.config.font_name, new_size, bold=True)
+                # self.current_surface = self.font.render(self.char, True, self.config.fg)
             else:
                 self.current_surface = self.letter
 
@@ -149,7 +155,6 @@ class Cell:
 
         # Позиция с учётом смещения (dx, dy)
         rect = self.current_surface.get_rect(
-            # TODO: мб переименовать self.rect в self.rect_center
             center=(self.rect.centerx + self.dx, self.rect.centery + self.dy)
         )
         screen.blit(self.current_surface, rect)
@@ -160,7 +165,11 @@ class Cell:
 
     def clear_override(self):
         self.override_surface = None
-        self._update_render()  # TODO: как будто бы это очень резко после вызывать _upd - мб скоростей не будет или is_moving
+        self._update_render()
+
+    def _sign(self, x):
+        """Кастомный sign"""
+        return 1 if x > 0 else -1
 
     def _move_info(self, speed) -> str:
         """Строка с информацией для маркеров о движении"""
@@ -168,10 +177,9 @@ class Cell:
             return "blink"
 
         if self.config.mode == "move":
-            # TODO: переписать sign: либо +1, либо -1; 0 не делать
-            is_x_move = np.sign(speed) if self.config.is_x_move else 0
-            is_y_move = np.sign(speed) if self.config.is_y_move else 0
-            is_z_move = np.sign(speed) if self.config.is_z_move else 0
+            is_x_move = self._sign(speed) if self.config.is_x_move else 0
+            is_y_move = self._sign(speed) if self.config.is_y_move else 0
+            is_z_move = self._sign(speed) if self.config.is_z_move else 0
 
             info = f"x: {is_x_move}, y: {is_y_move}, z: {is_z_move}"
 

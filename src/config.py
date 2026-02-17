@@ -16,20 +16,6 @@ class Config:
     # Режим эксперимента
     mode: str = "blink"  # blink / move
 
-    # Тайминги (в секундах) для подсказок вводимых букв
-    # TODO: сделать отдельно t_start и t_end
-    t_pause: float = 1.0  # пауза между буквами
-    t_cont: float = 2.0  # длительность подсветки (старт/финиш)
-    t_show: float = 8.0  # общее время показа буквы
-
-    # Алфавит
-    alphabet: str = "1234567890_ЙЦУКЕНГШЩЗХФЫВАПРОЛДЖЭЁЯЧСМИТЬБЮЪ"
-
-    # Техническое
-    fps: int = 60
-    log_file_name: str = "logs/log.txt"
-    font_size: int = 40
-
     # Среднее и дисперсия частоты показа символов
     freq_mean: float = 1.0
     freq_std: float = 0.1
@@ -38,6 +24,20 @@ class Config:
     delay_before: float = 0.4
     delay_after: float = 0.6
     is_rand_delay: bool = True  # из равномерного [0, delay_*]
+
+    # Тайминги (в секундах) для подсказок вводимых букв
+    t_pause: float = 1.0  # пауза между буквами
+    t_cont: float = 1.0  # длительность подсветки (старт/финиш)
+    t_show: float = 5.0  # общее время показа буквы
+
+    # Алфавит
+    alphabet: str = "1234567890_ЙЦУКЕНГШЩЗХФЫВАПРОЛДЖЭЁЯЧСМИТЬБЮЪ"
+
+    # Техническое
+    fps: int = 60
+    log_file_name: str = "logs/log.txt"
+    font_size: int = 55
+    font_name: str = "Arial"
 
     # ---------- Режим "move" ----------
     # По каким осям будет движение
