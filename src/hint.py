@@ -25,6 +25,11 @@ class HintManager:
     def start(self):
         """Начинает показ подсказок с первой буквы"""
         self.current_idx = 0
+
+        # Чистим все подсказки на случай повторного запуска
+        for _, cell in self.grid.cells.items():
+            cell.clear_override()
+
         self._show_next()
 
     def _show_next(self):

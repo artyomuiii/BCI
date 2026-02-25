@@ -36,7 +36,7 @@ class ExperimentApp:
     def start_experiment(self):
         self.state.is_active = True
         self.outlet.send("start_experiment")
-        # self.hint.start(self.state.start_time)
+        self.hint.start()
 
     def end_experiment(self):
         self.state.is_active = False

@@ -41,7 +41,7 @@ class Config:
 
     # ---------- Режим "move" ----------
     # По каким осям будет движение
-    is_x_move: bool = False
+    is_x_move: bool = True
     is_y_move: bool = False
     is_z_move: bool = True
 
